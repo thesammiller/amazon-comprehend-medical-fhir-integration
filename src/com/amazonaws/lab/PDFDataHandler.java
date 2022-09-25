@@ -16,12 +16,23 @@ import com.amazonaws.AmazonServiceException;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.S3Object;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.google.gson.Gson;
 
-import com.amazonaws.services.textract.TextractClient;
-
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.services.textract.AmazonTextract;
+import com.amazonaws.services.textract.AmazonTextractClientBuilder;
+import com.amazonaws.services.textract.model.Block;
+import com.amazonaws.services.textract.model.BoundingBox;
+import com.amazonaws.services.textract.model.DetectDocumentTextRequest;
+import com.amazonaws.services.textract.model.DetectDocumentTextResult;
+import com.amazonaws.services.textract.model.Document;
+import com.amazonaws.services.textract.model.S3Object;
+import com.amazonaws.services.textract.model.Point;
+import com.amazonaws.services.textract.model.Relationship;
+import com.amazonaws.services.textract.model.AmazonTextractException;
+import com.amazonaws.services.textract.AmazonTextractClient;
 
 
 
@@ -48,51 +59,54 @@ public class PDFDataHandler {
         String bucketName = map.get("S3Bucket");
         String docName = map.get("InputFile");
 		log.debug("PDFinput: " + docName);
-		
-		Region region = Region.US_WEST_2;
 
-		String json = null;
+		String textString = "";
 		try {
 			
-            TextractClient textractClient = TextractClient.builder()
-								            .region(region)
-								            .credentialsProvider(ProfileCredentialsProvider.create())
-								            .build();
+			
+			//https://github.com/awsdocs/aws-doc-sdk-examples/blob/main/java/example_code/textract/src/main/java/com/amazonaws/samples/DocumentText.java
+			//to translate the Python approach
+			//https://github.com/aws-samples/amazon-textract-and-comprehend-medical-document-processing
+			
+			//"In the next step, we will start the asynchronous textract operation by calling the start_document_analysis function.
+			//the function will kickoff an asynchronous job that will process our medical report file in the stipulated S3 bucket"
+			
+			Document document = new Document().withS3Object(new S3Object().withName(docName).withBucket(bucketName));
+			
+			// Call DetectDocumentText
+	        EndpointConfiguration endpoint = new EndpointConfiguration(
+	                "https://textract.us-west-2.amazonaws.com", "us-west-2");
+	        AmazonTextract client = AmazonTextractClientBuilder.standard()
+	                .withEndpointConfiguration(endpoint).build();
+			
+			//Detect Text in the Document
+			 DetectDocumentTextRequest request = new DetectDocumentTextRequest()
+	        											 .withDocument(document);
 
-            //detectDocTextS3
-            S3Object s3Object = S3Object.builder()
-                .bucket(bucketName)
-                .name(docName)
-                .build();
-        	
-        	// Create a Document object and reference the s3Object instance
-            Document myDoc = Document.builder()
-                .s3Object(s3Object)
-                .build();
-                
-            DetectDocumentTextRequest detectDocumentTextRequest = DetectDocumentTextRequest.builder()
-                .document(myDoc)
-                .build();
+			
+
+			DetectDocumentTextResult result = client.detectDocumentText(request);
+			
+			
             
-            DetectDocumentTextResponse textResponse = textractClient.detectDocumentText(detectDocumentTextRequest);
-            
-            for (Block block: textResponse.blocks()) {
-                System.out.println("The block text  is " +block.blockText().toString());
+            for (Block block: result.getBlocks()) {
+            	if (block.getBlockType() == "LINE") {
+            		//block.text()
+            		//The word or line of text that's recognized by Amazon Textract.
+            		textString = textString + block.getText();
+	                System.out.println("The block text  is " + block.getText());
+            	}
             }
         	
-        	textractClient.close();
-
-		} catch (TextractException e) {
+		} catch (AmazonTextractException e) {
 
             System.err.println(e.getMessage());
             System.exit(1);
         }
 
-		// TODO: If file is longer than 20k, needs to be split up for CM processing
-		// Save the output in a "processing" folder in the S3 bucket
 		log.debug("Output S3 path: " + map.get("S3Bucket") + "processing/unstructuredtext/" + map.get("FileName"));
 		putS3ObjectContentAsString(map.get("S3Bucket"), "processing/unstructuredtext/" + map.get("FileName"),
-				json.toString());
+				textString);
 
 		// Create our output response back to the state machine
 		Map<String, String> output = new HashMap<>();
@@ -119,6 +133,7 @@ public class PDFDataHandler {
 		}
 		return "Done";
 	}
+
 
 	public static void main(String[] args) {
 	

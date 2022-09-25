@@ -115,7 +115,7 @@ public class FHIRResourceBuilder {
 		 * "processing/input/hl7/mdm-02.txt-b7ea2ab0-e38f-4ee4-bad4-9bfc7c0a1fb0" }
 		 */
 
-		// check file type - HL7 or FHIR
+		// check file type - HL7 or FHIR or PDF
 		String fileType = map.get("DataType");
 		String cmOutputKey = map.get("CMOutput");
 		String s3Bucket = map.get("S3Bucket");
@@ -190,7 +190,7 @@ public class FHIRResourceBuilder {
 			response.put("Status", FHIRLoadResponseCodes.SUCCESS);
 			
 
-		} else if (fileType.equals("hl7")) {
+		} else if (fileType.equals("hl7") || fileType.equals("pdf")) {
 			// implement code to build FHIR resource from the HL7 unstructured data
 			// get the Patient based on identifiers
 

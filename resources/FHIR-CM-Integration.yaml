@@ -4,8 +4,8 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   FHIRAPIEndpoint:
     Type: String
-    #Replae the FHIR API end point from lab
-    Default: ""
+    #Replace the FHIR API end point from lab
+    Default: "https://j1ws7u6iyl.execute-api.us-west-2.amazonaws.com/Prod/"
   CognitoSecretName:
     Type: String
     Default: "MM-CMClientCognitoSecret"
@@ -15,7 +15,7 @@ Parameters:
     Default: "America/Los_Angeles"
   ClientId:
     Type: String
-    Default: ""
+    Default: "7i6ivsni1k3u2g1dknd84ju782"
 
 Resources:
   # SQS queue to store object create notifications from S3
