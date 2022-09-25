@@ -71,16 +71,22 @@ public class PDFDataHandler {
 			//"In the next step, we will start the asynchronous textract operation by calling the start_document_analysis function.
 			//the function will kickoff an asynchronous job that will process our medical report file in the stipulated S3 bucket"
 			
-			Document document = new Document().withS3Object(new S3Object().withName(docName).withBucket(bucketName));
+			S3Object s3Object = new S3Object().withName(docName).withBucket(bucketName);
+			System.out.println(s3Object);
+			Document document = new Document().withS3Object(s3Object);
+			System.out.println(document);
 			// Call DetectDocumentText
 	        EndpointConfiguration endpoint = new EndpointConfiguration(
-	                "https://textract.us-west-2.amazonaws.com", "us-west-2");
-	        AmazonTextract client = AmazonTextractClientBuilder.standard()
-	                				.withEndpointConfiguration(endpoint).build();
+	                "https://textract.us-east-1.amazonaws.com", "us-east-1");
+	        System.out.println(endpoint);
+	        
+	        AmazonTextract client = AmazonTextractClientBuilder.defaultClient();
+			
 			//Detect Text in the Document
-			 DetectDocumentTextRequest request = new DetectDocumentTextRequest()
+			DetectDocumentTextRequest request = new DetectDocumentTextRequest()
 	        											 .withDocument(document);
 
+			
 			DetectDocumentTextResult result = client.detectDocumentText(request);
             
             for (Block block: result.getBlocks()) {
@@ -137,8 +143,8 @@ public class PDFDataHandler {
 		
 		String bucketKey = "S3Bucket";
 		String docKey = "InputFile";
-		String bucketValue = "fhir-cm-integ-healthinfobucket-1x7y9a53ogmei";
-		String docValue = "/input/pdf/health_sample.pdf";
+		String bucketValue = "fhir-cm-integ-healthinfobucket-1rlvfxyky58d0";
+		String docValue = "health_sample.pdf";
 		
 		dataMap.put(bucketKey, bucketValue);
 		dataMap.put(docKey, docValue);
