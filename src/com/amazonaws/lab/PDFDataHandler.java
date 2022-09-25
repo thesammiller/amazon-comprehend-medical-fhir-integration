@@ -72,25 +72,20 @@ public class PDFDataHandler {
 			//the function will kickoff an asynchronous job that will process our medical report file in the stipulated S3 bucket"
 			
 			Document document = new Document().withS3Object(new S3Object().withName(docName).withBucket(bucketName));
-			
 			// Call DetectDocumentText
 	        EndpointConfiguration endpoint = new EndpointConfiguration(
 	                "https://textract.us-west-2.amazonaws.com", "us-west-2");
 	        AmazonTextract client = AmazonTextractClientBuilder.standard()
-	                .withEndpointConfiguration(endpoint).build();
-			
+	                				.withEndpointConfiguration(endpoint).build();
 			//Detect Text in the Document
 			 DetectDocumentTextRequest request = new DetectDocumentTextRequest()
 	        											 .withDocument(document);
 
-			
-
 			DetectDocumentTextResult result = client.detectDocumentText(request);
-			
-			
             
             for (Block block: result.getBlocks()) {
             	if (block.getBlockType() == "LINE") {
+            		System.out.println("Hello");
             		//block.text()
             		//The word or line of text that's recognized by Amazon Textract.
             		textString = textString + block.getText();
@@ -104,7 +99,7 @@ public class PDFDataHandler {
             System.exit(1);
         }
 
-		log.debug("Output S3 path: " + map.get("S3Bucket") + "processing/unstructuredtext/" + map.get("FileName"));
+		System.out.println("Output S3 path: " + map.get("S3Bucket") + "processing/unstructuredtext/" + map.get("FileName"));
 		putS3ObjectContentAsString(map.get("S3Bucket"), "processing/unstructuredtext/" + map.get("FileName"),
 				textString);
 
@@ -138,6 +133,22 @@ public class PDFDataHandler {
 	public static void main(String[] args) {
 	
 		PDFDataHandler handler = new PDFDataHandler();
+		Map<String, String> dataMap = new HashMap();
+		
+		String bucketKey = "S3Bucket";
+		String docKey = "InputFile";
+		String bucketValue = "fhir-cm-integ-healthinfobucket-1x7y9a53ogmei";
+		String docValue = "/input/pdf/health_sample.pdf";
+		
+		dataMap.put(bucketKey, bucketValue);
+		dataMap.put(docKey, docValue);
+		dataMap.put("Filename", "/input/pdf/health_sample.pdf");
+		dataMap.put("DataType", "pdf");
+		
+		Map<String, String> response = handler.handleRequest(dataMap, null);
+		
+		System.out.println(response);
+		
 	}
 
 }
