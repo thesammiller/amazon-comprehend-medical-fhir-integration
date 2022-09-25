@@ -74,6 +74,14 @@ Resources:
                     - Name: "prefix"
                       Value: "input/fhir/"
               Event: 's3:ObjectCreated:*'
+            -
+              Queue: !GetAtt HealthInfoNotifyQueue.Arn
+              Filter:
+                S3Key:
+                  Rules:
+                    - Name: "prefix"
+                      Value: "input/pdf/"
+              Event: 's3:ObjectCreated:*'
 
   # Step Functions IAM role that allows the state machine to invoke other Lambda functions in the AWS account
   HealthDataStatesExecutionRole:
@@ -127,6 +135,11 @@ Resources:
                       "Variable": "$.DataType",
                       "StringEquals": "fhir",
                       "Next": "ExtractFHIR"
+                    },
+                    {
+                      "Variable": "$.DataType",
+                      "StringEquals": "pdf",
+                      "Next": "ExtractPDF"
                     }
                   ],
                   "Default": "DataTypeFailure"
@@ -139,6 +152,11 @@ Resources:
                 "ExtractFHIR": {
                   "Type": "Task",
                   "Resource": "${FHIRDataExtractFunction}",
+                  "Next": "SendToCM"
+                },
+                "ExtractPDF": {
+                  "Type": "Task",
+                  "Resource": "${PDFDataExtractFunction}",
                   "Next": "SendToCM"
                 },
                 "SendToCM": {
@@ -248,7 +266,7 @@ Resources:
       Environment:
         Variables:
           FHIR_TIME_ZONE: !Ref FHIRTimeZone               
-  # Lambda function 'HL7DataHandler': Parses HL7 data and extracts the unstructured
+  # Lambda function 'FHIRDataHandler': Parses FHIR data and extracts the unstructured
   # text that will eventually get processed by Comprehend Medical
   FHIRDataExtractFunction:
     Type: AWS::Serverless::Function
@@ -275,6 +293,36 @@ Resources:
                - logs:*
              Resource:
                - "*"
+  # Lambda function 'PDFDataHandler': Parses PDF data and extracts the unstructured
+  # text that will eventually get processed by Comprehend Medical
+  PDFDataExtractFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: com.amazonaws.lab.PDFDataHandler::handleRequest
+      CodeUri: ../target/amazon-comprehend-medical-fhir-integration-0.0.1-SNAPSHOT.jar
+      #AutoPublishAlias: !Ref LambdaAlias
+      Runtime: java8
+      MemorySize: 512
+      Timeout: 300
+      Tracing: Active
+      Policies:
+        Statement:
+          -  Effect: "Allow"
+             Action:
+               - "s3:GetObject"
+               - "s3:PutObject"
+               - "s3:ListBucket"
+             Resource:
+               - !Sub '${HealthInfoBucket.Arn}/*'
+
+          -  Effect: Allow
+             Action:
+               - logs:*
+             Resource:
+               - "*"
+      Environment:
+        Variables:
+          FHIR_TIME_ZONE: !Ref FHIRTimeZone   
   # Lambda function 'SendToCm': sends unstructured notes data to Comprehend Medical
   SendToCMFunction:
     Type: AWS::Serverless::Function
