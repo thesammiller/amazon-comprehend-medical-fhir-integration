@@ -51,10 +51,18 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthRequest;
 
+// Lambda Java still uses v1 for RequestHandler
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 
+//import software.amazon.awssdk.services.lambda.runtime.Context;
+
+//import com.amazonaws.services.s3.AmazonS3;
+//import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+
+
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 //import com.amazonaws.services.secretsmanager.AWSSecretsManager;
 //import com.amazonaws.services.secretsmanager.AWSSecretsManagerClientBuilder;
@@ -86,8 +94,16 @@ public class FHIRResourceBuilder {
 	private final String version = "20180131";
 
 	private final boolean invokeSNOMED = true;
+	
+	private Region region = Region.US_WEST_2;
+	private ProfileCredentialsProvider credentialsProvider = ProfileCredentialsProvider.create();
 
-	private AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+	//private AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+
+	private S3Client s3 = S3Client.builder()
+									.region(region)
+									.credentialsProvider(credentialsProvider)
+									.build();
 
 	static final String MEDIA_TYPE_FHIR_JSON = "application/fhir+json";
 
@@ -106,8 +122,8 @@ public class FHIRResourceBuilder {
 	//private AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.defaultClient();
 
 	private CognitoIdentityProviderClient identityProviderClient = CognitoIdentityProviderClient.builder()
-																								.region(Region.US_WEST_2)
-																								.credentialsProvider(ProfileCredentialsProvider.create())
+																								.region(region)
+																								.credentialsProvider(credentialsProvider)
 																								.build();
 
 	/**
@@ -147,7 +163,22 @@ public class FHIRResourceBuilder {
 
 		if (fileType.equals("fhir")) {
 			
-			String fhirContent = s3Client.getObjectAsString(s3Bucket, fileKey);
+			//String fhirContent = s3Client.getObjectAsString(s3Bucket, fileKey);
+			String fhirContent;
+			GetObjectRequest objectRequest = GetObjectRequest.builder()
+															 .key(fileKey)
+															 .bucket(s3Bucket)
+															 .build();
+															 
+
+			
+			try (ResponseInputStream<GetObjectResponse> objectResponse = s3.getObject(objectRequest)) {
+				fhirContent = IOUtils.toString(objectResponse);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+			
+			
 			//parse the document as DocumentRefernce 
 			//get the patient id
 			//get the patient from FHIR repo
@@ -169,7 +200,22 @@ public class FHIRResourceBuilder {
 			
 			// get CM Output
 
-			String cmContent = s3Client.getObjectAsString(s3Bucket, cmOutputKey);
+			//String cmContent = s3Client.getObjectAsString(s3Bucket, cmOutputKey);
+			
+			String cmContent;
+			GetObjectRequest cmRequest = GetObjectRequest.builder()
+															 .key(cmOutputKey)
+															 .bucket(s3Bucket)
+															 .build();
+															 
+
+			
+			try (ResponseInputStream<GetObjectResponse> cmResponse = s3.getObject(cmRequest)) {
+				cmContent = IOUtils.toString(objectResponse);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+			
 			CMData cmData = CMUtil.parseCMOutput(cmContent);
 			
 			log.debug("The patient id : "+patientRef);
@@ -240,7 +286,22 @@ public class FHIRResourceBuilder {
 				pat = (Patient) entry.getResource();
 				// get CM Output
 
-				String cmContent = s3Client.getObjectAsString(s3Bucket, cmOutputKey);
+				//String cmContent = s3Client.getObjectAsString(s3Bucket, cmOutputKey);
+				
+				String cmContent;
+				GetObjectRequest cmRequest = GetObjectRequest.builder()
+																 .key(cmOutputKey)
+																 .bucket(s3Bucket)
+																 .build();
+																 
+	
+				
+				try (ResponseInputStream<GetObjectResponse> cmResponse = s3.getObject(cmRequest)) {
+					cmContent = IOUtils.toString(objectResponse);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+				
 				log.debug("Comprehend medical output : "+cmContent);
 				//need to wrap it with Entity tag.. I am not using the CM objects for Entities to filter out the negations.
 				//TO DO : use the CM entity object model to make it more efficient.
@@ -383,8 +444,8 @@ public class FHIRResourceBuilder {
 		//AWSSecretsManager client = clientBuilder.build();
 
 		SecretsManagerClient secretsClient = SecretsManagerClient.builder()
-																 .region(Region.US_WEST_2)
-																 .credentialsProvider(ProfileCredentialsProvider.create())
+																 .region(region)
+																 .credentialsProvider(credentialProvider)
 																 .build();
 		
 		
