@@ -3,13 +3,26 @@
   <groupId>com.amazonaws.lab</groupId>
   <artifactId>amazon-comprehend-medical-fhir-integration</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+   <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.17.230</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 	<dependencies>
 		<!--  cognito sdk -->
+		<!--
 	    <dependency>
 		      <groupId>com.amazonaws</groupId>
 		      <artifactId>aws-java-sdk-cognitoidp</artifactId>
 		      <version>1.11.531</version>
     	</dependency>
+    	
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-lambda-java-core</artifactId>
@@ -19,20 +32,42 @@
 		      <groupId>com.amazonaws</groupId>
 		      <artifactId>aws-lambda-java-events</artifactId>
 		      <version>2.2.6</version>
-    	</dependency>
-    	<!-- 
+    	</dependency> 
+    	
     	<dependency>
 		    <groupId>org.springframework</groupId>
 		    <artifactId>spring-core</artifactId>
 		    <version>5.1.6.RELEASE</version>
-		</dependency>
-    	-->
+		</dependency> -->
+		<dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>lambda</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>cognitoidentityprovider</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>secretsmanager</artifactId>
+            <version>2.17.136</version>
+        </dependency>
     	<!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-secretsmanager -->
+    	<!--
 		<dependency>
 		    <groupId>com.amazonaws</groupId>
 		    <artifactId>aws-java-sdk-secretsmanager</artifactId>
 		    <version>1.11.531</version>
 		</dependency>
+		-->
+		<dependency>
+		    <groupId>software.amazon.awssdk</groupId>
+		    <artifactId>bom</artifactId>
+		    <version>2.16.60</version>
+		    <type>pom</type>
+		    <scope>import</scope>
+		</dependency>
+		<!--
 		<dependency>
 		    <groupId>com.amazonaws</groupId>
 		    <artifactId>aws-java-sdk-bom</artifactId>
@@ -46,13 +81,17 @@
 	      <artifactId>aws-java-sdk-s3</artifactId>
 	      <version>1.11.531</version>
 	    </dependency>
+	    -->
 	    <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-stepfunctions -->
+		<!--
 		<dependency>
 		    <groupId>com.amazonaws</groupId>
 		    <artifactId>aws-java-sdk-stepfunctions</artifactId>
 		    <version>1.11.531</version>
 		</dependency>
+		-->
 		<!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-comprehendmedical -->
+		<!--
 		<dependency>
 		    <groupId>com.amazonaws</groupId>
 		    <artifactId>aws-java-sdk-comprehendmedical</artifactId>
@@ -63,6 +102,7 @@
 			<artifactId>aws-lambda-java-log4j2</artifactId>
 			<version>1.0.0</version>
 		</dependency>
+		-->
 		<dependency>
 		  <groupId>org.apache.logging.log4j</groupId>
 		  <artifactId>log4j-core</artifactId>

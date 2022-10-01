@@ -40,18 +40,32 @@ import org.hl7.fhir.dstu3.model.Patient;
 import org.hl7.fhir.dstu3.model.Reference;
 import org.hl7.fhir.dstu3.model.Resource;
 
-import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
-import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
-import com.amazonaws.services.cognitoidp.model.AuthFlowType;
-import com.amazonaws.services.cognitoidp.model.InitiateAuthRequest;
-import com.amazonaws.services.cognitoidp.model.InitiateAuthResult;
+//import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
+//import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
+//import com.amazonaws.services.cognitoidp.model.AuthFlowType;
+//import com.amazonaws.services.cognitoidp.model.InitiateAuthRequest;
+//import com.amazonaws.services.cognitoidp.model.InitiateAuthResult;
+
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthRequest;
+
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.secretsmanager.AWSSecretsManager;
-import com.amazonaws.services.secretsmanager.AWSSecretsManagerClientBuilder;
-import com.amazonaws.services.secretsmanager.model.GetSecretValueRequest;
-import com.amazonaws.services.secretsmanager.model.GetSecretValueResult;
+
+
+//import com.amazonaws.services.secretsmanager.AWSSecretsManager;
+//import com.amazonaws.services.secretsmanager.AWSSecretsManagerClientBuilder;
+//import com.amazonaws.services.secretsmanager.model.GetSecretValueRequest;
+//import com.amazonaws.services.secretsmanager.model.GetSecretValueResult;
+
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+
+
 import com.google.common.net.HttpHeaders;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
@@ -89,7 +103,12 @@ public class FHIRResourceBuilder {
 	private static String timeZoneId = System.getenv("FHIR_TIME_ZONE");
 	
 	
-	private AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.defaultClient();
+	//private AWSCognitoIdentityProvider cognitoClient = AWSCognitoIdentityProviderClientBuilder.defaultClient();
+
+	private CognitoIdentityProviderClient identityProviderClient = CognitoIdentityProviderClient.builder()
+																								.region(Region.US_WEST_2)
+																								.credentialsProvider(ProfileCredentialsProvider.create())
+																								.build();
 
 	/**
 	 * Method to build FHIR resources from CM output. It takes a transaction id to
@@ -360,16 +379,22 @@ public class FHIRResourceBuilder {
 	public String getCognitoIDToken() {
 
 	
-		AWSSecretsManagerClientBuilder clientBuilder = AWSSecretsManagerClientBuilder.standard();
+		//AWSSecretsManagerClientBuilder clientBuilder = AWSSecretsManagerClientBuilder.standard();
+		//AWSSecretsManager client = clientBuilder.build();
+
+		SecretsManagerClient secretsClient = SecretsManagerClient.builder()
+																 .region(Region.US_WEST_2)
+																 .credentialsProvider(ProfileCredentialsProvider.create())
+																 .build();
 		
-		AWSSecretsManager client = clientBuilder.build();
 		
-		GetSecretValueRequest secValReq = new GetSecretValueRequest()
-				.withSecretId(COGNITO_SECRET_NAME);
+		GetSecretValueRequest secValReq = GetSecretValueRequest.builder()
+																.secretId(COGNITO_SECRET_NAME)
+																.build();
 		
-		GetSecretValueResult secValRes = client.getSecretValue(secValReq);
+		GetSecretValueResponse secValRes = secretClient.getSecretValue(secValReq);
 		
-		String cognitoProps = secValRes.getSecretString();
+		String cognitoProps = secValRes.secretString();
 		
 		log.debug("The secret value : "+secValRes.getSecretString());
 		String userName = JsonPath.read(cognitoProps, "$.username");
@@ -382,17 +407,28 @@ public class FHIRResourceBuilder {
 		initialParams.put("USERNAME", userName);
 		initialParams.put("PASSWORD", password);
 		
-
+		/*
 		InitiateAuthRequest initiateAuth = new InitiateAuthRequest()
 				.withAuthFlow(AuthFlowType.USER_PASSWORD_AUTH)
 				.withAuthParameters(initialParams)
 				.withClientId(COGNITO_CLIENT_ID);
+		*/
 		
+		
+		String userPoolID = "us-west-2_yQLQQjS3d";
+		
+		AdminInitiateAuthRequest req = AdminInitiateAuthRequest.builder()
+											.authFlow(AuthFlowType.USER_PASSWORD_AUTH)
+											.clientId(COGNITO_CLIENT_ID)
+											.userPoolId(userPoolId)
+											.build();
 
 		//AdminInitiateAuthResult initialResponse = cognitoClient.initiateAuth(initiateAuth);
 		
-		InitiateAuthResult authRes = cognitoClient.initiateAuth(initiateAuth);
-		return authRes.getAuthenticationResult().getIdToken();
+		//InitiateAuthResult authRes = cognitoClient.initiateAuth(initiateAuth);
+		AdminInitiateAuthResult authRes = identifyProviderClient.adminInitiateAuth(req);
+		
+		return authRes.authenticationResult().idToken();
 	}
 	
 	public static void main(String []args) {
