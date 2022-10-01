@@ -58,29 +58,35 @@ public class PDFDataHandler {
 		String textString = "";
 		try {
 			Region region = Region.US_WEST_2;
+			System.out.println("Region set to us-west-2");
 			
 			 TextractClient textractClient = TextractClient.builder()
                 .region(region)
                 .credentialsProvider(ProfileCredentialsProvider.create())
                 .build();
 			
+			System.out.println("Textract client");
 			S3Object s3Object = S3Object.builder()
                 .bucket(bucketName)
                 .name(docName)
                 .build();
-
+            System.out.println("S3Object client");
             // Create a Document object and reference the s3Object instance
             Document myDoc = Document.builder()
                 .s3Object(s3Object)
                 .build();
-
+            System.out.println("Document build");
             DetectDocumentTextRequest detectDocumentTextRequest = DetectDocumentTextRequest.builder()
                 .document(myDoc)
                 .build();
-
+            System.out.println("Detect Doc Text");
+            
             DetectDocumentTextResponse textResponse = textractClient.detectDocumentText(detectDocumentTextRequest);
             
+            System.out.println("Hello");
+            
             for (Block block: textResponse.blocks()) {
+            	System.out.println(block.text());
             	textString = textString + block.text();
                 System.out.println("The block type is " +block.blockType().toString());
             }
@@ -91,11 +97,14 @@ public class PDFDataHandler {
 			
 		} catch (Exception e) {
 			System.out.println("Dude, exception");
+			System.out.println(e.getMessage());
            
         }
 
 		System.out.println("Output S3 path: " + map.get("S3Bucket") + "processing/unstructuredtext/" + map.get("FileName"));
-		
+		putS3ObjectContentAsString(map.get("S3Bucket"), "processing/unstructuredtext/" + map.get("FileName"),
+				textString);
+
 		// Create our output response back to the state machine
 		Map<String, String> output = new HashMap<>();
 		output.put("S3Bucket", map.get("S3Bucket"));
@@ -106,7 +115,22 @@ public class PDFDataHandler {
 
 		return output;
 	}
-
+	
+	public String putS3ObjectContentAsString(String bucketName, String key, String content) {
+		try {
+			s3Client.putObject(bucketName, key, content);
+		} catch (AmazonServiceException e) {
+			// The call was transmitted successfully, but Amazon S3 couldn't process
+			// it, so it returned an error response.
+			e.printStackTrace();
+		} catch (SdkClientException e) {
+			// Amazon S3 couldn't be contacted for a response, or the client
+			// couldn't parse the response from Amazon S3.
+			e.printStackTrace();
+		}
+		return "Done";
+	}
+	
 	public static void main(String[] args) {
 	
 		PDFDataHandler handler = new PDFDataHandler();
@@ -119,7 +143,7 @@ public class PDFDataHandler {
 		
 		dataMap.put(bucketKey, bucketValue);
 		dataMap.put(docKey, docValue);
-		dataMap.put("Filename", "health_sample.pdf");
+		dataMap.put("FileName", "health_sample.pdf");
 		dataMap.put("DataType", "pdf");
 		
 		Map<String, String> response = handler.handleRequest(dataMap, null);
