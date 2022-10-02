@@ -67,30 +67,35 @@
 		    <type>pom</type>
 		    <scope>import</scope>
 		</dependency>
-		<!--
 		<dependency>
 		    <groupId>com.amazonaws</groupId>
 		    <artifactId>aws-java-sdk-bom</artifactId>
 		    <version>1.11.531</version>
 		    <type>pom</type>
 		    <scope>import</scope>
-		</dependency>	
+		</dependency>
+		<!-- -->
 	    <dependency>
 	      <groupId>com.amazonaws</groupId>
 	      <artifactId>aws-java-sdk-s3</artifactId>
 	      <version>1.11.531</version>
 	    </dependency>
-	    -->
+	    <!-- -->
 		<dependency>
 	      <groupId>software.amazon.awssdk</groupId>
 	      <artifactId>s3</artifactId>
 	    </dependency>
 	    <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-stepfunctions -->
-		<!--
 		<dependency>
 		    <groupId>com.amazonaws</groupId>
 		    <artifactId>aws-java-sdk-stepfunctions</artifactId>
 		    <version>1.11.531</version>
+		</dependency>
+		<!--
+		<dependency>
+		    <groupId>software.amazon.awssdk</groupId>
+		    <artifactId>sfn</artifactId>
+		    <version>2.17.285</version>
 		</dependency>
 		-->
 		<!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-comprehendmedical -->
@@ -101,6 +106,11 @@
 		    <version>1.11.546</version>
 		</dependency>
 		-->
+		<!-- https://mvnrepository.com/artifact/software.amazon.awssdk/sfn -->
+		<dependency>
+		    <groupId>software.amazon.awssdk</groupId>
+		    <artifactId>comprehendmedical</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-lambda-java-log4j2</artifactId>

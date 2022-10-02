@@ -15,11 +15,30 @@ import org.hl7.fhir.dstu3.model.Enumerations.ResourceType;
 import org.hl7.fhir.dstu3.model.Patient;
 import org.hl7.fhir.dstu3.model.Resource;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.SdkClientException;
+import software.amazon.awssdk.core.ResponseBytes;
+
+//import com.amazonaws.AmazonServiceException;
+//import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+//import com.amazonaws.services.s3.AmazonS3;
+//import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+
+import java.nio.charset.Charset;
+import java.nio.ByteBuffer;
+
+import software.amazon.awssdk.core.sync.RequestBody;
+
+
 import com.google.gson.Gson;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -27,7 +46,16 @@ import ca.uhn.fhir.context.FhirContext;
 public class FHIRDataHandler {
 	static final Logger log = LogManager.getLogger(FHIRDataHandler.class);
 
-	private AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+	//private AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+	private Region region = Region.US_WEST_2;
+	private ProfileCredentialsProvider credentialsProvider = ProfileCredentialsProvider.create();
+
+
+	private S3Client s3 = S3Client.builder()
+									.region(region)
+									.credentialsProvider(credentialsProvider)
+									.build();
+
 	
 	private static FhirContext fhirContext = FhirContext.forDstu3();
 	
@@ -39,7 +67,19 @@ public class FHIRDataHandler {
 		
 		String fileKey = map.get("InputFile");
 		// Get S3 object as string, then process it
-		String fhirInput = s3Client.getObjectAsString(s3Bucket, fileKey);
+		//String fhirInput = s3Client.getObjectAsString(s3Bucket, fileKey);
+		
+		GetObjectRequest objectRequest = GetObjectRequest.builder()
+															 .key(fileKey)
+															 .bucket(s3Bucket)
+															 .build();
+															 
+
+		ResponseBytes<GetObjectResponse> objectBytes = s3.getObjectAsBytes(objectRequest);
+		byte[] data = objectBytes.asByteArray();
+		String fhirInput = new String(data);
+			
+			
 		DocumentReference docRef = fhirContext.newJsonParser().parseResource(DocumentReference.class, fhirInput);
 		String patientRef = docRef.getSubject().getReference();
 		
@@ -81,14 +121,22 @@ public class FHIRDataHandler {
 	
 	public String putS3ObjectContentAsString(String bucketName, String key, String content) {
 		try {
-			s3Client.putObject(bucketName, key, content);
-		} catch (AmazonServiceException e) {
+			// TODO: V2 Update here
+			//s3Client.putObject(bucketName, key, content);
+			PutObjectRequest putOb = PutObjectRequest.builder()
+													 .bucket(bucketName)
+													 .key(key)
+													 .build();
+			
+			
+			Charset charset = Charset.forName("ASCII");
+			
+			ByteBuffer buffer = ByteBuffer.wrap(content.getBytes(charset));
+			PutObjectResponse response = s3.putObject(putOb, RequestBody.fromByteBuffer(buffer));
+			
+		} catch (S3Exception e) {
 			// The call was transmitted successfully, but Amazon S3 couldn't process
 			// it, so it returned an error response.
-			e.printStackTrace();
-		} catch (SdkClientException e) {
-			// Amazon S3 couldn't be contacted for a response, or the client
-			// couldn't parse the response from Amazon S3.
 			e.printStackTrace();
 		}
 		return "Done";

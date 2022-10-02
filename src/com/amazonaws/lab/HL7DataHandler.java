@@ -9,14 +9,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+
+import java.nio.charset.Charset;
+import java.nio.ByteBuffer;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.SdkClientException;
+//import com.amazonaws.AmazonServiceException;
+//import com.amazonaws.SdkClientException;
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+//import com.amazonaws.services.s3.AmazonS3;
+//import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+
+
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.sync.RequestBody;
+
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+
+
 import com.google.gson.Gson;
 
 import ca.uhn.hl7v2.DefaultHapiContext;
@@ -33,7 +52,18 @@ import ca.uhn.hl7v2.util.Hl7InputStreamMessageStringIterator;
 public class HL7DataHandler {
 	static final Logger log = LogManager.getLogger(HL7DataHandler.class);
 
-	private AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+	//private AmazonS3 s3Client = AmazonS3ClientBuilder.standard().build();
+	
+	private Region region = Region.US_WEST_2;
+	private ProfileCredentialsProvider credentialsProvider = ProfileCredentialsProvider.create();
+
+
+	private S3Client s3 = S3Client.builder()
+									.region(region)
+									.credentialsProvider(credentialsProvider)
+									.build();
+
+
 	private static String timeZoneId = System.getenv("FHIR_TIME_ZONE");
 
 	private String HL7input;
@@ -197,8 +227,15 @@ public class HL7DataHandler {
 			if (key.endsWith("/")) {
 				key = key.substring(0, key.length());
 			}
+			
+			
+			GetObjectRequest objectRequest = GetObjectRequest.builder()
+															.key(key)
+															 .bucket(bucketName)
+															 .build();
+																 
 
-			try (InputStream is = s3Client.getObject(bucketName, key).getObjectContent()) {
+			try (ResponseInputStream<GetObjectResponse> is = s3.getObject(objectRequest)) {
 				BufferedInputStream buffStream = new BufferedInputStream(is);
 				Hl7InputStreamMessageStringIterator iter = new Hl7InputStreamMessageStringIterator(buffStream);
 				String hl7Msg = (iter.hasNext() ? iter.next() : "");
@@ -212,14 +249,19 @@ public class HL7DataHandler {
 
 	public String putS3ObjectContentAsString(String bucketName, String key, String content) {
 		try {
-			s3Client.putObject(bucketName, key, content);
-		} catch (AmazonServiceException e) {
-			// The call was transmitted successfully, but Amazon S3 couldn't process
-			// it, so it returned an error response.
-			e.printStackTrace();
-		} catch (SdkClientException e) {
-			// Amazon S3 couldn't be contacted for a response, or the client
-			// couldn't parse the response from Amazon S3.
+			//s3Client.putObject(bucketName, key, content);
+			PutObjectRequest putOb = PutObjectRequest.builder()
+													 .bucket(bucketName)
+													 .key(key)
+													 .build();
+			
+			
+			Charset charset = Charset.forName("ASCII");
+			
+			ByteBuffer buffer = ByteBuffer.wrap(content.getBytes(charset));
+			PutObjectResponse response = s3.putObject(putOb, RequestBody.fromByteBuffer(buffer));
+			
+		} catch (S3Exception e) {
 			e.printStackTrace();
 		}
 		return "Done";
@@ -245,10 +287,13 @@ public class HL7DataHandler {
 				"OBX|3|TX|||Diagnosis ICD: J01.90\r" + 
 				"OBX|4|TX|||Prescription: benzonatate (Tessalon Perles) 100mg oral tablet 30 tablets, 5 days supply. Take one to two tablets by mouth three times a day as needed. disp. 30. Refills: 0, Refill as needed: no, Allow substitutions: yes\r" ; 
 				
-		log.debug("The hl7 : \n " + hl7);
+		//log.debug("The hl7 : \n " + hl7);
+
+		System.out.println("The hl7 : \n " + hl7);
 
 		HL7DataHandler handler = new HL7DataHandler();
-		log.debug("The JSON Object : " + handler.parseHL7Payload(hl7));
+		//log.debug("The JSON Object : " + handler.parseHL7Payload(hl7));
+		System.out.println("The JSON Object : " + handler.parseHL7Payload(hl7));
 
 	}
 

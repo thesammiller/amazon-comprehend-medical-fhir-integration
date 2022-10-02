@@ -8,10 +8,20 @@ import java.util.Scanner;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.amazonaws.services.comprehendmedical.AWSComprehendMedical;
-import com.amazonaws.services.comprehendmedical.AWSComprehendMedicalClientBuilder;
-import com.amazonaws.services.comprehendmedical.model.DetectEntitiesRequest;
-import com.amazonaws.services.comprehendmedical.model.DetectEntitiesResult;
+import software.amazon.awssdk.regions.Region;
+
+//import com.amazonaws.services.comprehendmedical.AWSComprehendMedical;
+//import com.amazonaws.services.comprehendmedical.AWSComprehendMedicalClientBuilder;
+//import com.amazonaws.services.comprehendmedical.model.DetectEntitiesRequest;
+//import com.amazonaws.services.comprehendmedical.model.DetectEntitiesResult;
+
+
+import software.amazon.awssdk.services.comprehendmedical.ComprehendMedicalClient;
+import software.amazon.awssdk.services.comprehendmedical.model.DetectEntitiesRequest;
+import software.amazon.awssdk.services.comprehendmedical.model.DetectEntitiesResponse;
+import software.amazon.awssdk.services.comprehendmedical.model.ComprehendMedicalException;
+
+
 import com.google.gson.Gson;
 
 public class SendToCMUtil {
@@ -36,12 +46,25 @@ public class SendToCMUtil {
 		log.debug("The result Data : "+result.toString());
 		
         // Send "notes" string to Comprehend Medical
-        final AWSComprehendMedical client = AWSComprehendMedicalClientBuilder.defaultClient();
-        DetectEntitiesRequest request = new DetectEntitiesRequest();
-        request.setText(result.toString());
-        DetectEntitiesResult resultCM = client.detectEntities(request);
-        log.debug("The default toString "+resultCM);
-        log.debug(new Gson().toJson(resultCM));
+        //final AWSComprehendMedical client = AWSComprehendMedicalClientBuilder.defaultClient();
+        Region region = Region.US_WEST_2;
+        ComprehendMedicalClient medClient = ComprehendMedicalClient.builder()
+                                                                    .region(region)
+                                                                    .build();
+                                                                    
+        //DetectEntitiesRequest request = new DetectEntitiesRequest();
+        //request.setText(result.toString());
+        
+        DetectEntitiesRequest detectEntitiesRequest = DetectEntitiesRequest.builder()
+                                                                            .text(result.toString())
+                                                                            .build();
+        
+        //DetectEntitiesResult resultCM = client.detectEntities(request);
+         DetectEntitiesResponse resultCM = medClient.detectEntities(detectEntitiesRequest);
+        
+        
+        log.debug("The default toString "+resultCM.entities().toString());
+        log.debug(new Gson().toJson(resultCM.entities()));
         
 		return null;
 		//System.out.println("The CM Data : "+cmData.getEntities());
