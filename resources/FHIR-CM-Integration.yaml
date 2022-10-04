@@ -4,8 +4,8 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   FHIRAPIEndpoint:
     Type: String
-    #Replae the FHIR API end point from lab
-    Default: ""
+    #Replace the FHIR API end point from lab
+    Default: "https://j1ws7u6iyl.execute-api.us-west-2.amazonaws.com/Prod/"
   CognitoSecretName:
     Type: String
     Default: "MM-CMClientCognitoSecret"
@@ -15,7 +15,7 @@ Parameters:
     Default: "America/Los_Angeles"
   ClientId:
     Type: String
-    Default: ""
+    Default: "7i6ivsni1k3u2g1dknd84ju782"
 
 Resources:
   # SQS queue to store object create notifications from S3
@@ -74,6 +74,14 @@ Resources:
                     - Name: "prefix"
                       Value: "input/fhir/"
               Event: 's3:ObjectCreated:*'
+            -
+              Queue: !GetAtt HealthInfoNotifyQueue.Arn
+              Filter:
+                S3Key:
+                  Rules:
+                    - Name: "prefix"
+                      Value: "input/pdf/"
+              Event: 's3:ObjectCreated:*'
 
   # Step Functions IAM role that allows the state machine to invoke other Lambda functions in the AWS account
   HealthDataStatesExecutionRole:
@@ -127,6 +135,11 @@ Resources:
                       "Variable": "$.DataType",
                       "StringEquals": "fhir",
                       "Next": "ExtractFHIR"
+                    },
+                    {
+                      "Variable": "$.DataType",
+                      "StringEquals": "pdf",
+                      "Next": "ExtractPDF"
                     }
                   ],
                   "Default": "DataTypeFailure"
@@ -139,6 +152,11 @@ Resources:
                 "ExtractFHIR": {
                   "Type": "Task",
                   "Resource": "${FHIRDataExtractFunction}",
+                  "Next": "SendToCM"
+                },
+                "ExtractPDF": {
+                  "Type": "Task",
+                  "Resource": "${PDFDataExtractFunction}",
                   "Next": "SendToCM"
                 },
                 "SendToCM": {
@@ -157,7 +175,7 @@ Resources:
                 }
               }
             }
-          - {HealthDataRouterLambdaArn: !GetAtt [ HealthDataRouterFunction, Arn ], HL7DataExtractFunction: !GetAtt [ HL7DataExtractFunction, Arn], SendToCMFunction: !GetAtt [ SendToCMFunction, Arn ], FHIRResourceBuilderFunction: !GetAtt [FHIRResourceBuilderFunction, Arn], FHIRDataExtractFunction: !GetAtt [ FHIRDataExtractFunction, Arn]}
+          - {HealthDataRouterLambdaArn: !GetAtt [ HealthDataRouterFunction, Arn ], HL7DataExtractFunction: !GetAtt [ HL7DataExtractFunction, Arn], SendToCMFunction: !GetAtt [ SendToCMFunction, Arn ], FHIRResourceBuilderFunction: !GetAtt [FHIRResourceBuilderFunction, Arn], FHIRDataExtractFunction: !GetAtt [ FHIRDataExtractFunction, Arn], PDFDataExtractFunction: !GetAtt [ PDFDataExtractFunction, Arn]}
       RoleArn: !GetAtt HealthDataStatesExecutionRole.Arn
 
   # Lambda function 'HealthDataEventHandler': receives 1 event at a time from SQS and
@@ -248,7 +266,7 @@ Resources:
       Environment:
         Variables:
           FHIR_TIME_ZONE: !Ref FHIRTimeZone               
-  # Lambda function 'HL7DataHandler': Parses HL7 data and extracts the unstructured
+  # Lambda function 'FHIRDataHandler': Parses FHIR data and extracts the unstructured
   # text that will eventually get processed by Comprehend Medical
   FHIRDataExtractFunction:
     Type: AWS::Serverless::Function
@@ -275,6 +293,36 @@ Resources:
                - logs:*
              Resource:
                - "*"
+  # Lambda function 'PDFDataHandler': Parses PDF data and extracts the unstructured
+  # text that will eventually get processed by Comprehend Medical
+  PDFDataExtractFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: com.amazonaws.lab.PDFDataHandler::handleRequest
+      CodeUri: ../target/amazon-comprehend-medical-fhir-integration-0.0.1-SNAPSHOT.jar
+      #AutoPublishAlias: !Ref LambdaAlias
+      Runtime: java8
+      MemorySize: 512
+      Timeout: 300
+      Tracing: Active
+      Policies:
+        Statement:
+          -  Effect: "Allow"
+             Action:
+               - "s3:GetObject"
+               - "s3:PutObject"
+               - "s3:ListBucket"
+             Resource:
+               - !Sub '${HealthInfoBucket.Arn}/*'
+
+          -  Effect: Allow
+             Action:
+               - logs:*
+             Resource:
+               - "*"
+      Environment:
+        Variables:
+          FHIR_TIME_ZONE: !Ref FHIRTimeZone    
   # Lambda function 'SendToCm': sends unstructured notes data to Comprehend Medical
   SendToCMFunction:
     Type: AWS::Serverless::Function
@@ -350,7 +398,7 @@ Resources:
       Name: !Ref 'CognitoSecretName'
       Description: This secret has a hardcoded password in SecretString (use GenerateSecretString instead)
       # Replace the user name , passsword and client id from the values in the lab
-      SecretString: '{"username":"workshopuser","password":"Master123!"}'
+      SecretString: '{"username":"millers","password":"Master123!"}'
       Tags:
         -
           Key: AppName
