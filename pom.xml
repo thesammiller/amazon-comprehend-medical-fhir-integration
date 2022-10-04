@@ -12,6 +12,13 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+		    <groupId>com.amazonaws</groupId>
+		    <artifactId>aws-java-sdk-bom</artifactId>
+		    <version>1.11.531</version>
+		    <type>pom</type>
+		    <scope>import</scope>
+		</dependency>
         </dependencies>
     </dependencyManagement>
 	<dependencies>
@@ -33,11 +40,12 @@
 		      <artifactId>aws-lambda-java-events</artifactId>
 		      <version>2.2.6</version>
     	</dependency> 
+		<!-- https://mvnrepository.com/artifact/software.amazon.awssdk/textract -->
 		<dependency>
-		      <groupId>software.amazon.awssdk</groupId>
-		      <artifactId>textract</artifactId>
-		      <version>2.17.281</version>
-    	</dependency> 
+		    <groupId>software.amazon.awssdk</groupId>
+		    <artifactId>textract</artifactId>
+		    <version>2.17.285</version>
+		</dependency>
     	<!--
     	<dependency>
 		    <groupId>org.springframework</groupId>
@@ -65,6 +73,7 @@
 		    <version>1.11.531</version>
 		</dependency>
 		-->
+		<!--
 		<dependency>
 		    <groupId>software.amazon.awssdk</groupId>
 		    <artifactId>bom</artifactId>
@@ -79,6 +88,7 @@
 		    <type>pom</type>
 		    <scope>import</scope>
 		</dependency>
+		-->
 		<!-- -->
 	    <dependency>
 	      <groupId>com.amazonaws</groupId>
@@ -240,6 +250,7 @@
 					<target>1.8</target>
 				</configuration>
 			</plugin>
+				<!--
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
@@ -259,6 +270,7 @@
 						</configuration>
 					</execution>
 				</executions>
+
 				<dependencies>
 					<dependency>
 						<groupId>com.github.edwgiz</groupId>
@@ -267,6 +279,7 @@
 					</dependency>
 				</dependencies>
 			</plugin>
+			-->
 		</plugins>
 	</build>
 	<properties>

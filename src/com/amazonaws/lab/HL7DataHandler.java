@@ -13,6 +13,7 @@ import java.util.TimeZone;
 import java.nio.charset.Charset;
 import java.nio.ByteBuffer;
 
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,6 +29,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -234,14 +236,12 @@ public class HL7DataHandler {
 															 .bucket(bucketName)
 															 .build();
 																 
-
-			try (ResponseInputStream<GetObjectResponse> is = s3.getObject(objectRequest)) {
-				BufferedInputStream buffStream = new BufferedInputStream(is);
-				Hl7InputStreamMessageStringIterator iter = new Hl7InputStreamMessageStringIterator(buffStream);
-				String hl7Msg = (iter.hasNext() ? iter.next() : "");
-
-				return hl7Msg;
-			}
+		
+			ResponseBytes<GetObjectResponse> objectBytes = s3.getObjectAsBytes(objectRequest);
+			byte[] data = objectBytes.asByteArray();
+			String hl7Msg = new String(data);
+			return hl7Msg;
+			
 		} catch (Exception e) {
 			throw new IllegalStateException(e);
 		}

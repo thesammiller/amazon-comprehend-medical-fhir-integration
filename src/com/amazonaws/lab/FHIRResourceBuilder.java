@@ -250,7 +250,7 @@ public class FHIRResourceBuilder {
 			response.put("Status", FHIRLoadResponseCodes.SUCCESS);
 			
 
-		} else if (fileType.equals("hl7")) {
+		} else if (fileType.equals("hl7") || fileType.equals("pdf")) {
 			// implement code to build FHIR resource from the HL7 unstructured data
 			// get the Patient based on identifiers
 
